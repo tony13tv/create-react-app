@@ -100,6 +100,8 @@ checkBrowsers(paths.appPath, isInteractive)
     const protocol = process.env.HTTPS === 'true' ? 'https' : 'http';
     const appName = require(paths.appPackageJson).name;
 
+    config.output.path = paths.appBuild;
+  
     const useTypeScript = fs.existsSync(paths.appTsConfig);
     const tscCompileOnError = process.env.TSC_COMPILE_ON_ERROR === 'true';
     const urls = prepareUrls(
@@ -137,6 +139,9 @@ checkBrowsers(paths.appPath, isInteractive)
       proxyConfig,
       urls.lanUrlForConfig
     );
+  
+    serverConfig.writeToDisk = true;
+  
     const devServer = new WebpackDevServer(compiler, serverConfig);
     // Launch WebpackDevServer.
     devServer.listen(port, HOST, err => {
@@ -174,9 +179,23 @@ checkBrowsers(paths.appPath, isInteractive)
       });
     }
   })
+  .then(() => {
+    // Remove all content but keep the directory so that
+    // if you're in it, you don't end up in trash
+    fs.emptyDirSync(paths.appBuild);
+    // Merge with the public folder
+    copyPublicFolder();
+  })
   .catch(err => {
     if (err && err.message) {
       console.log(err.message);
     }
     process.exit(1);
   });
+
+function copyPublicFolder() {
+  fs.copySync(paths.appPublic, paths.appBuild, {
+    dereference: true,
+    filter: file => file !== paths.appHtml,
+  });
+}
